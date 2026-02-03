@@ -181,45 +181,41 @@ def extract_osgb_boundary_original_coords(osgb_folder, output_path, epsg_id, out
     if boundary_polygons:
         print(f'瓦片处理完成，共处理 {processed_tiles} 个瓦片')
         
-        # 7. 基于XML原点进行坐标移动
-        if srs_origin:
-            print(f'从metadata.xml读取到原点坐标: {srs_origin}')
-            print('基于原点坐标进行瓦片移动...')
-            
-            # 移动所有多边形到原点位置
-            moved_polygons = []
-            for polygon in boundary_polygons:
-                # 计算多边形的边界框
-                min_x, min_y, max_x, max_y = polygon.bounds
-                
-                # 计算移动偏移量
-                # 将瓦片移动到原点位置，使用原始坐标作为偏移量
-                # 这里假设原始坐标是从0开始的索引，需要乘以一个缩放因子
-                scale_factor = 100.0  # 缩放因子，根据实际数据调整
-                
-                offset_x = srs_origin[0] + (min_x * scale_factor)
-                offset_y = srs_origin[1] + (min_y * scale_factor)
-                tile_width = (max_x - min_x) * scale_factor
-                tile_height = (max_y - min_y) * scale_factor
-                
-                # 创建移动后的多边形
-                moved_polygon = Polygon([
-                    (offset_x, offset_y),
-                    (offset_x + tile_width, offset_y),
-                    (offset_x + tile_width, offset_y + tile_height),
-                    (offset_x, offset_y + tile_height)
-                ])
-                moved_polygons.append(moved_polygon)
-            
-            boundary_polygons = moved_polygons
-            print('瓦片移动完成!')
-        else:
-            print('未找到metadata.xml中的原点坐标，使用原始坐标...')
-        
-        # 8. 合并所有多边形为一个
+        # 7. 合并所有多边形为一个
         print('正在合并所有多边形为一个...')
         merged_polygon = unary_union(boundary_polygons)
         print('多边形合并完成!')
+        
+        # 8. 基于XML原点进行坐标移动
+        if srs_origin:
+            print(f'从metadata.xml读取到原点坐标: {srs_origin}')
+            print('基于原点坐标进行边界移动...')
+            
+            # 计算合并后多边形的边界框
+            min_x, min_y, max_x, max_y = merged_polygon.bounds
+            
+            # 计算移动偏移量
+            # 将边界移动到原点位置，使用原始坐标作为偏移量
+            # 这里假设原始坐标是从0开始的索引，需要乘以一个缩放因子
+            scale_factor = 100.0  # 缩放因子，根据实际数据调整
+            
+            offset_x = srs_origin[0] + (min_x * scale_factor)
+            offset_y = srs_origin[1] + (min_y * scale_factor)
+            boundary_width = (max_x - min_x) * scale_factor
+            boundary_height = (max_y - min_y) * scale_factor
+            
+            # 创建移动后的多边形
+            moved_polygon = Polygon([
+                (offset_x, offset_y),
+                (offset_x + boundary_width, offset_y),
+                (offset_x + boundary_width, offset_y + boundary_height),
+                (offset_x, offset_y + boundary_height)
+            ])
+            
+            merged_polygon = moved_polygon
+            print('边界移动完成!')
+        else:
+            print('未找到metadata.xml中的原点坐标，使用原始坐标...')
         
         # 9. 创建输出文件夹
         print('正在创建输出文件夹...')
